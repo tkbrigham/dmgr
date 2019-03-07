@@ -1,0 +1,7 @@
+[package]
+name = "dmgr"
+version = "0.1.0"
+authors = ["Thomas Brigham <thomas@thomasbrigham.me>"]
+edition = "2018"
+
+[dependencies]
