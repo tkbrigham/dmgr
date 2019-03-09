@@ -5,3 +5,8 @@ authors = ["Thomas Brigham <thomas@thomasbrigham.me>"]
 edition = "2018"
 
 [dependencies]
+iron = "*"
+router = "*"
+
+[dependencies.logger]
+git = "https://github.com/iron/logger.git"
