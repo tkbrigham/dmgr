@@ -1,3 +1,9 @@
+
+### Ordered ToDo list
+1. Logging
+1. Running commands: get `start` working
+1. Routing: enable requests to be sent
+
 ### Tasks
 1. [routing](https://docs.rs/iron/0.6.0/iron/request/index.html)
     1. This is to enable connecting to non-local services
@@ -23,7 +29,7 @@
 1. group class
 1. Config file 
     1. ~/.config
-    1. .toml files
+    1. [.toml files](https://docs.rs/toml/0.4.10/toml/)
 1. subcommands
     1. config
     1. group
@@ -35,7 +41,7 @@
     1. restart
     1. start
     1. stop
-1. migration from `solo`
+1. migration from Python `solo`
 
 
 ### Other topics
