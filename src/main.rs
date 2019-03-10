@@ -26,8 +26,6 @@ fn main() {
         println!("hit register handler");
         let mut s = String::new();
         let len = req.body.read_to_string(&mut s);
-        println!("{}", s);
-
 
         thread::spawn(move || {
             let mut router = Router::new();
