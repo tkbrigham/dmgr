@@ -1,6 +1,7 @@
-
 ### Ordered ToDo list
 1. Logging
+    1. [Formatter documentation](https://docs.rs/log4rs/0.8.1/log4rs/encode/pattern/index.html)
+    1. [rust strftime vars](https://docs.rs/chrono/0.4.0/chrono/format/strftime/index.html)
 1. Running commands: get `start` working
 1. Routing: enable requests to be sent
 

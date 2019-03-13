@@ -7,8 +7,9 @@ edition = "2018"
 [dependencies]
 iron = "*"
 router = "*"
-log4rs = "*"
-log = "*"
+log = "0.4.6"
+log4rs = "0.8.1"
+home = "*"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"
