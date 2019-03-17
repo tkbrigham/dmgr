@@ -1,9 +1,7 @@
 ### Ordered ToDo list
-1. Logging
-    1. [Formatter documentation](https://docs.rs/log4rs/0.8.1/log4rs/encode/pattern/index.html)
-    1. [rust strftime vars](https://docs.rs/chrono/0.4.0/chrono/format/strftime/index.html)
-1. Running commands: get `start` working
-1. Routing: enable requests to be sent
+1. Arg Parsing
+1. Config file overrides
+1. Routing: enable requests to be sent elsewhere
 
 ### Tasks
 1. [routing](https://docs.rs/iron/0.6.0/iron/request/index.html)
@@ -13,13 +11,16 @@
 1. [Logging](https://docs.rs/log4rs/*/log4rs/)
     1. Use [solo logging](https://github.com/socrata/solo/blob/master/solo/solo_logging.py)
        for examples if necessary
+    1. [Formatter documentation](https://docs.rs/log4rs/0.8.1/log4rs/encode/pattern/index.html)
+    1. [rust strftime vars](https://docs.rs/chrono/0.4.0/chrono/format/strftime/index.html)
 1. [arg parsing](https://docs.rs/clap/*/clap/)
     1. [examples](https://github.com/clap-rs/clap/blob/master/examples/01b_quick_example.rs)
 1. [running commands](https://doc.rust-lang.org/std/process/struct.Command.html)
-1. Dependency trees?
-1. Daemon to check on status of services?
+    1. [CHECK THIS OUT](https://rust-lang-nursery.github.io/rust-cookbook/os/external.html)
 1. Configurable, either `dmgr config` or otherwise
     1. Configured with files, I would think
+1. Dependency trees?
+1. Daemon to check on status of services?
 1. `bin` dir?
 1. tests
 1. installation
