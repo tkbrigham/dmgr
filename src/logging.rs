@@ -1,4 +1,4 @@
-use home;
+extern crate home;
 use log::LevelFilter;
 use log4rs::append::file::FileAppender;
 use log4rs::encode::pattern::PatternEncoder;
