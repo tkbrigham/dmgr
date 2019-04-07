@@ -2,9 +2,10 @@ extern crate clap;
 
 use self::clap::*;
 
-use command::Subcommand;
 use command::list::ListRunner;
+use command::register::RegisterRunner;
 use command::start::StartRunner;
+use command::Subcommand;
 
 pub fn new() -> App<'static, 'static> {
     app_from_crate!()
@@ -12,4 +13,5 @@ pub fn new() -> App<'static, 'static> {
         .setting(AppSettings::SubcommandRequired)
         .subcommand(ListRunner::sub_cmd())
         .subcommand(StartRunner::sub_cmd())
+        .subcommand(RegisterRunner::sub_cmd())
 }

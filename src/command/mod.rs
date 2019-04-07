@@ -1,11 +1,13 @@
-pub mod start;
 pub mod list;
+pub mod register;
+pub mod start;
 
-use clap::{App,ArgMatches};
+use clap::{App, ArgMatches};
+use std::fmt;
 
 pub trait Runnable<'a> {
     fn new(args: &'a ArgMatches<'a>) -> Self;
-    fn run(&self) -> Result<DmgrSuccess, DmgrError>;
+    fn run(&self) -> DmgrResult;
 }
 
 pub trait Subcommand {
@@ -14,20 +16,23 @@ pub trait Subcommand {
     fn sub_cmd() -> App<'static, 'static>;
 }
 
-#[derive(Debug)]
-pub struct DmgrSuccess {
-    content: String
-}
-
-impl DmgrSuccess {
-    pub fn new(content: &str) -> Self { DmgrSuccess { content: String::from(content) } }
-}
+pub type DmgrResult = Result<(), DmgrErr>;
 
 #[derive(Debug)]
-pub struct DmgrError {
-    content: String
+pub struct DmgrErr {
+    msg: String,
 }
 
-impl DmgrError {
-    pub fn new(content: &str) -> Self { DmgrError { content: String::from(content) } }
+impl DmgrErr {
+    pub fn new(content: &str) -> Self {
+        DmgrErr {
+            msg: String::from(content),
+        }
+    }
+}
+
+impl fmt::Display for DmgrErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.msg)
+    }
 }

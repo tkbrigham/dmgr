@@ -1,14 +1,14 @@
 // Runs commands
 extern crate home;
 
-use std::process::Command;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
+use std::process::Command;
 
 pub fn run() {
     let log_path: Result<PathBuf, &str> = match home::home_dir() {
         Some(path) => Ok(path.join("runner.out.log")),
-        None => Err("problem determining home dir")
+        None => Err("problem determining home dir"),
     };
 
     let file_out = OpenOptions::new()

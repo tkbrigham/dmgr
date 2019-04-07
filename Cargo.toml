@@ -7,10 +7,15 @@ description = "Start, stop, and manage your local services"
 [dependencies]
 iron = "*"
 router = "*"
-log = "0.4.6"
-log4rs = "0.8.1"
+log = "*"
+log4rs = "*"
 home = "*"
 clap = "*"
+toml = "*"
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
+prettytable-rs = "*"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"

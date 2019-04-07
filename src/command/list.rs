@@ -1,15 +1,18 @@
-use command::{Runnable,Subcommand};
-use clap::{App,Arg,ArgMatches,SubCommand};
-use command::{DmgrError,DmgrSuccess};
+use clap::{App, Arg, ArgMatches, SubCommand};
+use prettytable::format;
+use prettytable::Table;
+use prettytable::*;
+
+use std::iter::FromIterator;
+
+use command::DmgrErr;
+use command::DmgrResult;
+use command::{Runnable, Subcommand};
+use config::ServiceRegistry;
 
 #[derive(Debug)]
 pub struct ListRunner<'a> {
-    pub args: &'a ArgMatches<'a>
-}
-
-impl<'a> Runnable<'a> for ListRunner<'a> {
-    fn new(args: &'a ArgMatches) -> Self { ListRunner { args } }
-    fn run(&self) -> Result<DmgrSuccess, DmgrError> { Ok(DmgrSuccess::new("list runner")) }
+    pub args: &'a ArgMatches<'a>,
 }
 
 impl<'a> Subcommand for ListRunner<'a> {
@@ -18,13 +21,75 @@ impl<'a> Subcommand for ListRunner<'a> {
     fn sub_cmd() -> App<'static, 'static> {
         SubCommand::with_name(Self::NAME)
             .about("lists services")
-            .arg(Arg::with_name("all")
-                .long("all")
-                .short("a")
+            .arg(Arg::with_name("all").long("all").short("a"))
+            .arg(Arg::with_name("hidden only").long("hidden").short("h"))
+    }
+}
+
+impl<'a> Runnable<'a> for ListRunner<'a> {
+    fn new(args: &'a ArgMatches) -> Self {
+        ListRunner { args }
+    }
+    fn run(&self) -> DmgrResult {
+        const SVC_REG: &str = "/Users/tkbrigham/.solo/service-registry.json";
+        let reg = ServiceRegistry::from(SVC_REG).unwrap();
+
+        let rows: Vec<Vec<String>> = reg.services.into_iter().map(|s| vec![s.name]).collect();
+
+        let t = TableBuilder::new().header(vec!["Service Name"]);
+
+        rows.into_iter()
+            .fold(t, |t, r| t.add_row(r))
+            .build()
+            .printstd();
+
+        Ok(())
+    }
+}
+
+struct TableBuilder {
+    pub table: Table,
+    header: Vec<String>,
+    rows: Vec<Vec<String>>,
+}
+
+impl TableBuilder {
+    fn new() -> TableBuilder {
+        let mut table = Table::new();
+        let format = format::FormatBuilder::new()
+            .column_separator(' ')
+            .separator(
+                format::LinePosition::Title,
+                format::LineSeparator::new('-', ' ', ' ', ' '),
             )
-            .arg(Arg::with_name("hidden only")
-                .long("hidden")
-                .short("h")
-            )
+            .padding(0, 1)
+            .build();
+        table.set_format(format);
+
+        TableBuilder {
+            table,
+            header: vec![],
+            rows: vec![],
+        }
+    }
+
+    fn header<T>(mut self, header: Vec<T>) -> Self
+    where
+        T: AsRef<str> + std::fmt::Display,
+    {
+        self.table.set_titles(Row::from(header));
+        self
+    }
+
+    fn add_row<T>(mut self, row: Vec<T>) -> Self
+    where
+        T: AsRef<str> + std::fmt::Display,
+    {
+        self.table.add_row(Row::from(row));
+        self
+    }
+
+    fn build(self) -> Table {
+        self.table
     }
 }

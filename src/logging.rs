@@ -1,10 +1,10 @@
 extern crate home;
 use log::LevelFilter;
-use log4rs::append::file::FileAppender;
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::config::{Appender, Config, Root};
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::console::Target;
+use log4rs::append::file::FileAppender;
+use log4rs::config::{Appender, Config, Root};
+use log4rs::encode::pattern::PatternEncoder;
 use log4rs::filter::threshold::ThresholdFilter;
 
 use std::path::PathBuf;
@@ -19,10 +19,11 @@ pub fn init() {
     let config = Config::builder()
         .appender(console_appender)
         .appender(dmgr_appender)
-        .build(Root::builder()
-            .appender(console_name)
-            .appender(dmgr_name)
-            .build(LOG_LVL)
+        .build(
+            Root::builder()
+                .appender(console_name)
+                .appender(dmgr_name)
+                .build(LOG_LVL),
         )
         .unwrap();
 
@@ -34,7 +35,7 @@ fn dmgr_logger() -> (&'static str, Appender) {
     let name = "dmgr";
     let log_path: Result<PathBuf, &'static str> = match home::home_dir() {
         Some(path) => Ok(path.join(format!("{}.test.log", &name))),
-        None => Err("problem determining home dir")
+        None => Err("problem determining home dir"),
     };
 
     let logfile = FileAppender::builder()
@@ -50,7 +51,8 @@ fn console_logger() -> (&'static str, Appender) {
     let name = "console";
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(LOG_PAT)))
-        .target(Target::Stdout).build();
+        .target(Target::Stdout)
+        .build();
 
     let appender = Appender::builder()
         .filter(Box::new(ThresholdFilter::new(LOG_LVL)))

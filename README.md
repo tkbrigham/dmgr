@@ -1,5 +1,9 @@
 ### Ordered ToDo list
-1. Subcommand
+1. Subcommands:
+  - Register
+  - Start
+  - Stop
+  - Logs
 1. Config file overrides
 1. Routing: enable requests to be sent elsewhere
 
@@ -44,6 +48,7 @@
     1. start
     1. stop
 1. migration from Python `solo`
+1. Harden, aka no `unwrap()`
 
 
 ### Other topics
@@ -52,6 +57,3 @@
 1. [std lib docs](https://doc.rust-lang.org/std/index.html)
 1. [rust API checklist](https://rust-lang-nursery.github.io/api-guidelines/checklist.html)
 1. [arg completion](https://docs.rs/clap/*/clap/struct.App.html#method.gen_completions)
-
-#### Later
-1. [Learn boxes??](https://doc.rust-lang.org/1.14.0/book/box-syntax-and-patterns.html)
