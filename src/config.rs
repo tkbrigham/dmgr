@@ -16,6 +16,7 @@ use constants;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServiceRegistry {
+    pub path: PathBuf,
     pub content: ServiceRegistryContent,
 }
 
@@ -76,7 +77,10 @@ impl ServiceRegistry {
 
         file.read_to_string(&mut contents)?;
         let content: ServiceRegistryContent = serde_json::from_str(contents.as_str())?;
-        Ok(ServiceRegistry { content })
+        Ok(ServiceRegistry {
+            content,
+            path: PathBuf::from(path),
+        })
     }
 }
 

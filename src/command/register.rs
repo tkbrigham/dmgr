@@ -1,10 +1,10 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 use std::env;
-use std::path::PathBuf;
 use std::io;
+use std::path::PathBuf;
 
-use log::info;
+use log::{info, warn};
 
 use command::DmgrErr;
 use command::DmgrResult;
@@ -64,7 +64,7 @@ impl<'a> Runnable<'a> for RegisterRunner<'a> {
         match self.args {
             //            r if r.occurrences_of("recursive") != 0 => register_recursive(r),
             //            a if a.is_present("all") => register_all(a),
-            //            d if d.is_present("delete") => unregister(d),
+            d if d.is_present("delete") => unregister(d),
             s if s.is_present("service") => register_single(s),
             default => register_default(default),
         }
@@ -96,10 +96,20 @@ fn find_svc_config(svc: &str, cwd: io::Result<PathBuf>) -> Result<PathBuf, DmgrE
         .map_err(|_| dmgr_err!("unable to find a config file for service '{}'", svc))
 }
 
-//fn unregister<'a>(args: &'a ArgMatches) -> DmgrResult {
-//    println!("running delete");
-//    Ok(())
-//}
+fn unregister<'a>(args: &'a ArgMatches) -> DmgrResult {
+    let svc = args.value_of("service").unwrap();
+    let mut registry = ServiceRegistry::get()?;
+
+    match registry.content.remove(svc) {
+        Some(_) => info!("Successfully removed {:?} from service registry", svc),
+        None => warn!("no entry {:?} found in {:?}", svc, registry.path),
+    };
+
+    registry.save()?;
+
+    Ok(())
+}
+
 fn register_default<'a>(_args: &'a ArgMatches) -> DmgrResult {
     println!("running default register");
     Ok(())
