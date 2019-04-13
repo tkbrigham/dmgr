@@ -48,6 +48,7 @@
     1. start
     1. stop
 1. migration from Python `solo`
+1. Remove #[allow(dead_code)]
 1. Harden, aka no `unwrap()`
 
 

@@ -1,11 +1,17 @@
+#![allow(dead_code)]
+
 extern crate clap;
 extern crate log;
 extern crate log4rs;
 extern crate prettytable;
 
+#[macro_use]
+mod macros;
+
 mod args;
 mod command;
 mod config;
+mod constants;
 mod logging;
 mod runner;
 
@@ -16,12 +22,15 @@ use command::list::ListRunner;
 use command::register::RegisterRunner;
 use command::start::StartRunner;
 use command::{DmgrErr, DmgrResult, Runnable, Subcommand};
-use config::Service;
-use config::ServiceRegistry;
 use std::process;
 
 fn main() -> DmgrResult {
     logging::init();
+
+    // TODO: will print back trace
+    if false {
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
 
     if false {
         // TODO: temp way to quickly enabled/disable execution of logging
@@ -46,13 +55,12 @@ fn main() -> DmgrResult {
             (ListRunner::NAME, Some(args)) => ListRunner { args }.run(),
             (StartRunner::NAME, Some(args)) => StartRunner { args }.run(),
             (RegisterRunner::NAME, Some(args)) => RegisterRunner { args }.run(),
-            (ListRunner::NAME, Some(args)) => ListRunner { args }.run(),
             _ => Err(DmgrErr::new("unknown")),
         }
     }
 
     if let Err(e) = run(matches) {
-        error!("{}", e);
+        error!("{}\n{:?}", e, e.stacktrace);
         process::exit(1)
     }
 

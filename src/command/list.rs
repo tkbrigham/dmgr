@@ -3,9 +3,6 @@ use prettytable::format;
 use prettytable::Table;
 use prettytable::*;
 
-use std::iter::FromIterator;
-
-use command::DmgrErr;
 use command::DmgrResult;
 use command::{Runnable, Subcommand};
 use config::ServiceRegistry;
@@ -21,6 +18,8 @@ impl<'a> Subcommand for ListRunner<'a> {
     fn sub_cmd() -> App<'static, 'static> {
         SubCommand::with_name(Self::NAME)
             .about("lists services")
+            .alias("ls")
+            // TODO: are these necessary?
             .arg(Arg::with_name("all").long("all").short("a"))
             .arg(Arg::with_name("hidden only").long("hidden").short("h"))
     }
@@ -34,7 +33,7 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         const SVC_REG: &str = "/Users/tkbrigham/.solo/service-registry.json";
         let reg = ServiceRegistry::from(SVC_REG).unwrap();
 
-        let rows: Vec<Vec<String>> = reg.services.into_iter().map(|s| vec![s.name]).collect();
+        let rows: Vec<Vec<String>> = reg.content.into_iter().map(|pair| vec![pair.0]).collect();
 
         let t = TableBuilder::new().header(vec!["Service Name"]);
 
@@ -49,7 +48,6 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
 
 struct TableBuilder {
     pub table: Table,
-    header: Vec<String>,
     rows: Vec<Vec<String>>,
 }
 
@@ -68,7 +66,6 @@ impl TableBuilder {
 
         TableBuilder {
             table,
-            header: vec![],
             rows: vec![],
         }
     }
