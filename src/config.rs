@@ -45,10 +45,15 @@ impl ServiceRegistry {
         }
     }
 
-    pub fn add_cfg(self, path: PathBuf) -> DmgrResult<Self> {
+    pub fn add_cfg(mut self, path: &PathBuf) -> DmgrResult<Self> {
         let name = path.file_stem().unwrap().to_str().unwrap().to_string();
 
-        let repo_path = path.parent().and_then(|d| d.parent()).unwrap();
+        let mut ancestors = path.ancestors();
+        ancestors.next();
+        ancestors.next();
+
+        let repo_path = ancestors.next().unwrap();
+
         let cfg_file = ServiceConfigContent::from_path(&path)?;
 
         let entry = ServiceRegistryEntryJson {
@@ -57,10 +62,8 @@ impl ServiceRegistry {
             repo_path: PathBuf::from(repo_path),
         };
 
-        let mut registry = Self::get()?;
-        registry.content.insert(name, entry);
-
-        Ok(registry)
+        self.content.insert(name, entry);
+        Ok(self)
     }
 
     pub fn save(self) -> DmgrResult<Self> {
@@ -115,6 +118,7 @@ impl ServiceConfigContent {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServiceRegistryEntryJson {
+    #[serde(skip_serializing_if = "Option::is_none")]
     aliases: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     image_tag: Option<String>,

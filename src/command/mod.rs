@@ -10,6 +10,7 @@ use clap::{App, ArgMatches};
 
 use std::fmt;
 use std::io;
+use std::path::StripPrefixError;
 
 pub mod list;
 pub mod register;
@@ -50,15 +51,15 @@ impl fmt::Display for DmgrErr {
     }
 }
 
-impl From<io::Error> for DmgrErr {
-    fn from(err: io::Error) -> Self {
-        DmgrErr::new(err.to_string().as_str())
-    }
-}
-
 impl From<String> for DmgrErr {
     fn from(err: String) -> Self {
         DmgrErr::new(err.as_str())
+    }
+}
+
+impl From<io::Error> for DmgrErr {
+    fn from(err: io::Error) -> Self {
+        DmgrErr::new(err.to_string().as_str())
     }
 }
 
@@ -70,6 +71,12 @@ impl From<de::Error> for DmgrErr {
 
 impl From<JsonErr> for DmgrErr {
     fn from(err: JsonErr) -> Self {
+        DmgrErr::new(&err.to_string())
+    }
+}
+
+impl From<StripPrefixError> for DmgrErr {
+    fn from(err: StripPrefixError) -> Self {
         DmgrErr::new(&err.to_string())
     }
 }
