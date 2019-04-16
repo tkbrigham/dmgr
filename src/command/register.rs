@@ -10,6 +10,7 @@ use command::DmgrResult;
 use command::{Runnable, Subcommand};
 use config::ServiceRegistry;
 use constants;
+use service::Service;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::DirEntry;
@@ -125,7 +126,24 @@ fn path_to_svc_name(p: &PathBuf) -> &OsStr {
 fn register_default<'a>(_args: &'a ArgMatches) -> DmgrResult {
     let cfg_dir = PathBuf::from(constants::SERVICE_CONFIG_DIR);
     ensure_dir_exists(&cfg_dir)?;
-    info!("registering all default services in {:?}...", cfg_dir);
+    info!("registering default services in {:?}...", cfg_dir);
+
+    let json_files = find_all_json_files(cfg_dir)?;
+    let services: Vec<Service> = json_files
+        .iter()
+        .map(Service::from_path)
+        .filter_map(Result::ok)
+        .filter(|s| s.register_by_default)
+        .collect();
+
+    services
+        .iter()
+        .fold(ServiceRegistry::get(), |r, svc| r?.add_svc(svc))?
+        .save()?;
+
+    let svc_names: Vec<&String> = services.iter().map(|s| &s.name).collect();
+    info!("successfully added services: {:?}", svc_names);
+
     Ok(())
 }
 

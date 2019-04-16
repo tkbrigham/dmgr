@@ -13,6 +13,7 @@ use std::string::String;
 
 use command::DmgrResult;
 use constants;
+use service::Service;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServiceRegistry {
@@ -20,7 +21,7 @@ pub struct ServiceRegistry {
     pub content: ServiceRegistryContent,
 }
 
-type ServiceRegistryContent = BTreeMap<String, ServiceRegistryEntryJson>;
+pub type ServiceRegistryContent = BTreeMap<String, ServiceRegistryEntryJson>;
 
 impl ServiceRegistry {
     pub fn get() -> DmgrResult<ServiceRegistry> {
@@ -43,6 +44,10 @@ impl ServiceRegistry {
             json if json.ends_with(".json") => ServiceRegistry::from_json(json),
             _ => fail!("could not read '{:?}'", path),
         }
+    }
+
+    pub fn add_svc(self, svc: &Service) -> DmgrResult<Self> {
+        self.add_cfg(&svc.config_file)
     }
 
     pub fn add_cfg(mut self, path: &PathBuf) -> DmgrResult<Self> {
@@ -89,20 +94,20 @@ impl ServiceRegistry {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ServiceConfigContent {
-    aliases: Option<Vec<String>>,
-    image_name: Option<String>,
-    ports: Option<Vec<u16>>,
-    start_container: Option<String>,
-    start_process: Option<String>,
-    start_dev_mode: Option<String>,
-    http_check: Option<String>,
-    health_checks: Option<Vec<String>>,
-    register_by_default: Option<bool>,
-    requires_sudo: Option<bool>,
+    pub aliases: Option<Vec<String>>,
+    pub image_name: Option<String>,
+    pub ports: Option<Vec<u16>>,
+    pub start_container: Option<String>,
+    pub start_process: Option<String>,
+    pub start_dev_mode: Option<String>,
+    pub http_check: Option<String>,
+    pub health_checks: Option<Vec<String>>,
+    pub register_by_default: Option<bool>,
+    pub requires_sudo: Option<bool>,
 }
 
 impl ServiceConfigContent {
-    fn from_path(path: &PathBuf) -> DmgrResult<Self> {
+    pub fn from_path(path: &PathBuf) -> DmgrResult<Self> {
         let e = err!("unable to find service config {:?}", path);
         path.to_str().map_or(e, |s| Self::from(s))
     }
@@ -125,4 +130,12 @@ pub struct ServiceRegistryEntryJson {
     repo_path: PathBuf,
 }
 
-//toml::to_string(&config).unwrap()
+impl From<Service> for ServiceRegistryEntryJson {
+    fn from(svc: Service) -> Self {
+        Self {
+            aliases: Some(svc.aliases),
+            image_tag: svc.image_tag,
+            repo_path: svc.repo_path,
+        }
+    }
+}

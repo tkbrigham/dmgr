@@ -14,9 +14,10 @@ mod config;
 mod constants;
 mod logging;
 mod runner;
+mod service;
 
 use clap::ArgMatches;
-use log::{debug, error, info, trace, warn};
+use log::error;
 
 use command::list::ListRunner;
 use command::register::RegisterRunner;
@@ -33,15 +34,6 @@ fn main() -> DmgrResult {
     }
 
     if false {
-        // TODO: temp way to quickly enabled/disable execution of logging
-        error!("Error");
-        warn!("Warn");
-        info!("info");
-        debug!("debug");
-        trace!("trace");
-    }
-
-    if false {
         runner::run();
     }
 
@@ -49,6 +41,11 @@ fn main() -> DmgrResult {
     let matches = app.get_matches();
 
     //    println!("Matches = {:#?}", matches);
+
+    //    let p = PathBuf::from("/Users/tkbrigham/developer/socrata/core/.solo/core.json");
+    //    let s = Service::from_path(&p).unwrap();
+    //    println!("service is {:#?}", s);
+    //    process::exit(1);
 
     fn run(matches: ArgMatches) -> DmgrResult {
         match matches.subcommand() {

@@ -8,6 +8,7 @@ use self::serde_json::Error as JsonErr;
 use self::toml::de;
 use clap::{App, ArgMatches};
 
+use std::ffi::OsString;
 use std::fmt;
 use std::io;
 use std::path::StripPrefixError;
@@ -78,5 +79,15 @@ impl From<JsonErr> for DmgrErr {
 impl From<StripPrefixError> for DmgrErr {
     fn from(err: StripPrefixError) -> Self {
         DmgrErr::new(&err.to_string())
+    }
+}
+
+impl From<OsString> for DmgrErr {
+    fn from(err: OsString) -> Self {
+        //        DmgrErr::new(&err.to_string().unwrap_or(format!("failed to convert {:?} to error", &err)))
+        DmgrErr::new(
+            &err.to_str()
+                .unwrap_or(format!("failed to convert {:?} to error", &err).as_str()),
+        )
     }
 }
