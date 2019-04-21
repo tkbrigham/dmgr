@@ -1,3 +1,5 @@
+extern crate home;
+
 use command::DmgrResult;
 use config::ServiceConfigContent;
 use std::ffi::OsStr;
@@ -8,9 +10,9 @@ pub struct Service {
     pub name: String,
     pub repo_path: PathBuf,
     pub config_file: PathBuf,
-    pub start_process: Option<String>,
-    pub start_dev_mode: Option<String>,
-    pub start_container: Option<String>,
+    pub start_process: Option<ServiceCommand>,
+    pub start_dev_mode: Option<ServiceCommand>,
+    pub start_container: Option<ServiceCommand>,
     pub http_check: Option<String>,
     pub health_checks: Vec<String>,
     pub image_name: Option<String>, // consider making getter that falls back to name
@@ -26,8 +28,6 @@ impl Service {
     pub fn from_path(path: &PathBuf) -> DmgrResult<Self> {
         let e = dmgr_err!("unable to find service config {:?}", path);
         let canonical_path = path.canonicalize().map_err(|_| e)?;
-
-        //        let name= path_to_svc_name(&canonical_path).to_os_string();
         let config_content = ServiceConfigContent::from_path(&canonical_path)?;
 
         let svc = Service {
@@ -50,6 +50,14 @@ impl Service {
         };
 
         Ok(svc)
+    }
+
+    pub fn log_path(&self) -> DmgrResult<PathBuf> {
+        let home = home::home_dir().ok_or(dmgr_err!("could not determine home dir"))?;
+        Ok(home
+            .join(".solo")
+            .join("log")
+            .join(format!("{}.log", self.name)))
     }
 
     //    pub fn from(s: &str) -> DmgrResult<Self> {
@@ -83,6 +91,8 @@ impl Service {
         }
     }
 }
+
+pub type ServiceCommand = String;
 
 // TODO: this is implemented in register.rs too
 fn path_to_svc_name(p: &PathBuf) -> &OsStr {

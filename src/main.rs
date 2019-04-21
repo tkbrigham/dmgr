@@ -29,7 +29,7 @@ fn main() -> DmgrResult {
     logging::init();
 
     // TODO: will print back trace
-    if false {
+    if true {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 

@@ -17,6 +17,7 @@ serde_derive = "*"
 serde_json = "*"
 prettytable-rs = "*"
 backtrace = "*"
+shlex = "*"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"

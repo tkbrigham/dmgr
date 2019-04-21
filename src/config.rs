@@ -5,7 +5,7 @@ extern crate toml;
 
 use self::serde_derive::{Deserialize, Serialize};
 
-use std::collections::BTreeMap;
+use std::collections::btree_map::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -44,6 +44,15 @@ impl ServiceRegistry {
             json if json.ends_with(".json") => ServiceRegistry::from_json(json),
             _ => fail!("could not read '{:?}'", path),
         }
+    }
+
+    pub fn get_service(&self, name: &str) -> DmgrResult<Service> {
+        let entry = self
+            .content
+            .get(name)
+            .ok_or(dmgr_err!("unable to find service {:?}", name))?;
+        let cfg_path = entry.repo_path.join(".solo").join(format!("{}.json", name));
+        Service::from_path(&cfg_path)
     }
 
     pub fn add_svc(self, svc: &Service) -> DmgrResult<Self> {

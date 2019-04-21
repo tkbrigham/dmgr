@@ -50,6 +50,7 @@
 1. migration from Python `solo`
 1. Remove #[allow(dead_code)]
 1. Harden, aka no `unwrap()`
+1. constantize all arg things
 
 
 ### Other topics
@@ -58,3 +59,4 @@
 1. [std lib docs](https://doc.rust-lang.org/std/index.html)
 1. [rust API checklist](https://rust-lang-nursery.github.io/api-guidelines/checklist.html)
 1. [arg completion](https://docs.rs/clap/*/clap/struct.App.html#method.gen_completions)
+    1. [Shell enum](https://docs.rs/clap/*/clap/enum.Shell.html)
