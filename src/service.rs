@@ -1,9 +1,14 @@
 extern crate home;
+extern crate serde_json;
 
 use command::DmgrResult;
 use config::ServiceConfigContent;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use config::Runfile;
+use std::fs::File;
+use std::io::Write;
+use std::fs::OpenOptions;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -52,12 +57,33 @@ impl Service {
         Ok(svc)
     }
 
-    pub fn log_path(&self) -> DmgrResult<PathBuf> {
+    pub fn log_file(&self) -> DmgrResult<PathBuf> {
         let home = home::home_dir().ok_or(dmgr_err!("could not determine home dir"))?;
         Ok(home
             .join(".solo")
             .join("log")
             .join(format!("{}.log", self.name)))
+    }
+
+    pub fn run_file(&self) -> DmgrResult<PathBuf> {
+        let home = home::home_dir().ok_or(dmgr_err!("could not determine home dir"))?;
+        Ok(home
+            .join(".solo")
+            .join("run")
+            .join(format!("{}.json", self.name)))
+
+    }
+
+    pub fn pid(&self) -> DmgrResult<u32> {
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .read(true)
+            .open(self.run_file()?)?;
+
+        let runfile: Runfile = serde_json::from_reader(file)?;
+
+        Ok(runfile.pid)
     }
 
     //    pub fn from(s: &str) -> DmgrResult<Self> {
@@ -89,6 +115,25 @@ impl Service {
             requires_sudo: false,
             register_by_default: true,
         }
+    }
+
+//    fn http_check_passing() -> bool {
+//
+//    }
+//
+//    fn port_check() -> bool {
+//
+//    }
+//
+//    fn passes_pid_check() {}
+
+    pub fn update_runfile(&self, r: Runfile) -> DmgrResult {
+        let mut file = File::create(self.run_file()?)?;
+        let mut content = serde_json::to_string_pretty(&r)?;
+        content.push_str("\n");
+
+        file.write_all(content.as_bytes())?;
+        Ok(())
     }
 }
 

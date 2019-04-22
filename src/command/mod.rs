@@ -16,6 +16,7 @@ use std::path::StripPrefixError;
 pub mod list;
 pub mod register;
 pub mod start;
+pub mod stop;
 
 pub trait Runnable<'a> {
     fn new(args: &'a ArgMatches<'a>) -> Self;

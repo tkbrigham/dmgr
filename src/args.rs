@@ -5,6 +5,7 @@ use self::clap::*;
 use command::list::ListRunner;
 use command::register::RegisterRunner;
 use command::start::StartRunner;
+use command::stop::StopRunner;
 use command::Subcommand;
 
 pub fn new() -> App<'static, 'static> {
@@ -14,4 +15,5 @@ pub fn new() -> App<'static, 'static> {
         .subcommand(ListRunner::sub_cmd())
         .subcommand(StartRunner::sub_cmd())
         .subcommand(RegisterRunner::sub_cmd())
+        .subcommand(StopRunner::sub_cmd())
 }

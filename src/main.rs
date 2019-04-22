@@ -4,6 +4,7 @@ extern crate clap;
 extern crate log;
 extern crate log4rs;
 extern crate prettytable;
+extern crate sysinfo;
 
 #[macro_use]
 mod macros;
@@ -22,6 +23,7 @@ use log::error;
 use command::list::ListRunner;
 use command::register::RegisterRunner;
 use command::start::StartRunner;
+use command::stop::StopRunner;
 use command::{DmgrErr, DmgrResult, Runnable, Subcommand};
 use std::process;
 
@@ -51,6 +53,7 @@ fn main() -> DmgrResult {
         match matches.subcommand() {
             (ListRunner::NAME, Some(args)) => ListRunner { args }.run(),
             (StartRunner::NAME, Some(args)) => StartRunner { args }.run(),
+            (StopRunner::NAME, Some(args)) => StopRunner { args }.run(),
             (RegisterRunner::NAME, Some(args)) => RegisterRunner { args }.run(),
             _ => Err(DmgrErr::new("unknown")),
         }

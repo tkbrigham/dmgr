@@ -148,3 +148,11 @@ impl From<Service> for ServiceRegistryEntryJson {
         }
     }
 }
+
+type Pid = u32;
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Runfile {
+    pub pid: Pid,
+    pub is_container: bool,
+}

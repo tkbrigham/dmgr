@@ -12,6 +12,8 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::Command;
+use std::net::TcpListener;
+use config::Runfile;
 
 #[derive(Debug)]
 pub struct StartRunner<'a> {
@@ -125,14 +127,33 @@ fn start_attached(mut cmd: Command) -> DmgrResult {
 }
 
 fn spawn(svc: Service, mut cmd: Command) -> DmgrResult {
-    cmd.stderr(out_file(&svc)?)
+    let child = cmd.stderr(out_file(&svc)?)
         .stdout(out_file(&svc)?)
         .spawn()?;
+
+
+    let runfile = Runfile { pid: child.id(), is_container: false };
+    println!("da file = {:?}", runfile);
+    svc.update_runfile(runfile);
+
+    wait_for_service(svc);
+
     Ok(())
 }
 
+fn wait_for_service(svc: Service) -> DmgrResult {
+    Ok(())
+}
+
+fn port_is_available(port: u16) -> bool {
+    match TcpListener::bind(("127.0.0.1", port)) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+
 fn out_file(svc: &Service) -> DmgrResult<File> {
-    let log_path = svc.log_path()?;
+    let log_path = svc.log_file()?;
     if !log_path.exists() {
         ensure_parent_dir_exists(&log_path)?;
     }
