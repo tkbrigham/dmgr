@@ -31,11 +31,15 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
     }
     fn run(&self) -> DmgrResult {
         const SVC_REG: &str = "/Users/tkbrigham/.solo/service-registry.json";
-        let reg = ServiceRegistry::from(SVC_REG).unwrap();
+        let reg = ServiceRegistry::from(SVC_REG)?;
 
-        let rows: Vec<Vec<String>> = reg.content.into_iter().map(|pair| vec![pair.0]).collect();
+        let header: Vec<&str> = vec!["Service", "Status"];
+        let rows: Vec<Vec<String>> = reg.services()
+            .into_iter()
+            .map(|s| s.row())
+            .collect();
 
-        let t = TableBuilder::new().header(vec!["Service Name"]);
+        let t = TableBuilder::new().header(header);
 
         rows.into_iter()
             .fold(t, |t, r| t.add_row(r))

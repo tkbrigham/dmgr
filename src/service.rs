@@ -1,6 +1,8 @@
 extern crate home;
 extern crate serde_json;
 
+use sysinfo::SystemExt;
+
 use command::DmgrResult;
 use config::ServiceConfigContent;
 use std::ffi::OsStr;
@@ -9,6 +11,9 @@ use config::Runfile;
 use std::fs::File;
 use std::io::Write;
 use std::fs::OpenOptions;
+use std::net::TcpListener;
+use std::thread;
+use std::thread::JoinHandle;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -74,7 +79,7 @@ impl Service {
 
     }
 
-    pub fn pid(&self) -> DmgrResult<u32> {
+    pub fn pid(&self) -> DmgrResult<i32> {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -96,6 +101,42 @@ impl Service {
 
     pub fn from_alias(s: &str) -> DmgrResult<Self> {
         Self::from_path(&PathBuf::from(s))
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.ports_all_open() && self.pid_is_running()
+    }
+
+    pub fn row(self) -> Vec<String> {
+        vec![
+            self.name.clone(),
+            self.is_running().to_string().clone(),
+        ]
+    }
+
+    pub fn ports_all_open(&self) -> bool {
+        let mut threads: Vec<JoinHandle<bool>> = vec![];
+
+        for port in self.ports.clone() {
+            threads.push(thread::spawn(move || {
+                port_is_available(port)
+            }));
+        }
+
+        threads.into_iter().fold(true, |b, t| b && t.join().unwrap())
+    }
+
+    pub fn pid_is_running(&self) -> bool {
+        let system = sysinfo::System::new();
+        let p = match self.pid() {
+            Ok(pid) => pid,
+            Err(_) => return false,
+        };
+
+        match system.get_process(p) {
+            Some(_) => true,
+            None => false,
+        }
     }
 
     fn new() -> Service {
@@ -148,3 +189,11 @@ fn repo_path_for(canonical_path: &PathBuf) -> PathBuf {
     let repo = canonical_path.parent().and_then(|p| p.parent());
     PathBuf::from(repo.unwrap())
 }
+
+fn port_is_available(port: u16) -> bool {
+    match TcpListener::bind(("0.0.0.0", port)) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+

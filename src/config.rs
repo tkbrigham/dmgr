@@ -55,6 +55,12 @@ impl ServiceRegistry {
         Service::from_path(&cfg_path)
     }
 
+    pub fn services(&self) -> Vec<Service> {
+        self.content.keys().into_iter()
+            .filter_map(|t| self.get_service(t).ok())
+            .collect()
+    }
+
     pub fn add_svc(self, svc: &Service) -> DmgrResult<Self> {
         self.add_cfg(&svc.config_file)
     }
@@ -149,7 +155,7 @@ impl From<Service> for ServiceRegistryEntryJson {
     }
 }
 
-type Pid = u32;
+pub type Pid = i32;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Runfile {

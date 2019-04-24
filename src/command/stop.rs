@@ -9,14 +9,6 @@ use sysinfo::Signal;
 use command::DmgrResult;
 use command::{Runnable, Subcommand};
 use config::ServiceRegistry;
-use service::Service;
-use std::fs::create_dir_all;
-use std::fs::File;
-use std::fs::OpenOptions;
-use std::path::PathBuf;
-use std::process::Command;
-use std::net::TcpListener;
-use config::Runfile;
 
 #[derive(Debug)]
 pub struct StopRunner<'a> {
