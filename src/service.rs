@@ -4,14 +4,14 @@ extern crate serde_json;
 use sysinfo::SystemExt;
 
 use command::DmgrResult;
+use config::Runfile;
 use config::ServiceConfigContent;
 use std::ffi::OsStr;
-use std::path::PathBuf;
-use config::Runfile;
 use std::fs::File;
-use std::io::Write;
 use std::fs::OpenOptions;
+use std::io::Write;
 use std::net::TcpListener;
+use std::path::PathBuf;
 use std::thread;
 use std::thread::JoinHandle;
 
@@ -76,7 +76,6 @@ impl Service {
             .join(".solo")
             .join("run")
             .join(format!("{}.json", self.name)))
-
     }
 
     pub fn pid(&self) -> DmgrResult<i32> {
@@ -108,22 +107,19 @@ impl Service {
     }
 
     pub fn row(self) -> Vec<String> {
-        vec![
-            self.name.clone(),
-            self.is_running().to_string().clone(),
-        ]
+        vec![self.name.clone(), self.is_running().to_string().clone()]
     }
 
     pub fn ports_all_open(&self) -> bool {
         let mut threads: Vec<JoinHandle<bool>> = vec![];
 
         for port in self.ports.clone() {
-            threads.push(thread::spawn(move || {
-                port_is_available(port)
-            }));
+            threads.push(thread::spawn(move || port_is_available(port)));
         }
 
-        threads.into_iter().fold(true, |b, t| b && t.join().unwrap())
+        threads
+            .into_iter()
+            .fold(true, |b, t| b && t.join().unwrap())
     }
 
     pub fn pid_is_running(&self) -> bool {
@@ -158,15 +154,15 @@ impl Service {
         }
     }
 
-//    fn http_check_passing() -> bool {
-//
-//    }
-//
-//    fn port_check() -> bool {
-//
-//    }
-//
-//    fn passes_pid_check() {}
+    //    fn http_check_passing() -> bool {
+    //
+    //    }
+    //
+    //    fn port_check() -> bool {
+    //
+    //    }
+    //
+    //    fn passes_pid_check() {}
 
     pub fn update_runfile(&self, r: Runfile) -> DmgrResult {
         let mut file = File::create(self.run_file()?)?;
@@ -196,4 +192,3 @@ fn port_is_available(port: u16) -> bool {
         Err(_) => false,
     }
 }
-

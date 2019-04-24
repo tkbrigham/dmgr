@@ -56,7 +56,9 @@ impl ServiceRegistry {
     }
 
     pub fn services(&self) -> Vec<Service> {
-        self.content.keys().into_iter()
+        self.content
+            .keys()
+            .into_iter()
             .filter_map(|t| self.get_service(t).ok())
             .collect()
     }

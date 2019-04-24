@@ -5,6 +5,8 @@ use log::info;
 
 use command::DmgrResult;
 use command::{Runnable, Subcommand};
+use config::Pid;
+use config::Runfile;
 use config::ServiceRegistry;
 use service::Service;
 use std::fs::create_dir_all;
@@ -12,8 +14,6 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::Command;
-use config::Runfile;
-use config::Pid;
 
 #[derive(Debug)]
 pub struct StartRunner<'a> {
@@ -127,16 +127,19 @@ fn start_attached(mut cmd: Command) -> DmgrResult {
 }
 
 fn spawn(svc: Service, mut cmd: Command) -> DmgrResult {
-    let child = cmd.stderr(out_file(&svc)?)
+    let child = cmd
+        .stderr(out_file(&svc)?)
         .stdout(out_file(&svc)?)
         .spawn()?;
 
-
-    let runfile = Runfile { pid: child.id() as Pid, is_container: false };
+    let runfile = Runfile {
+        pid: child.id() as Pid,
+        is_container: false,
+    };
     println!("da file = {:?}", runfile);
     svc.update_runfile(runfile)?;
 
-//    wait_for_service(svc);
+    //    wait_for_service(svc);
 
     Ok(())
 }

@@ -34,10 +34,7 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         let reg = ServiceRegistry::from(SVC_REG)?;
 
         let header: Vec<&str> = vec!["Service", "Status"];
-        let rows: Vec<Vec<String>> = reg.services()
-            .into_iter()
-            .map(|s| s.row())
-            .collect();
+        let rows: Vec<Vec<String>> = reg.services().into_iter().map(|s| s.row()).collect();
 
         let t = TableBuilder::new().header(header);
 

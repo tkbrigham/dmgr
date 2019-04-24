@@ -2,9 +2,9 @@ extern crate shlex;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use log::{info, warn};
-use sysinfo::SystemExt;
 use sysinfo::ProcessExt;
 use sysinfo::Signal;
+use sysinfo::SystemExt;
 
 use command::DmgrResult;
 use command::{Runnable, Subcommand};
@@ -63,8 +63,10 @@ fn stop<'a>(args: &'a ArgMatches) -> DmgrResult {
     warn!("pid is {:?}", &pid);
 
     let system = sysinfo::System::new();
-    let p = system.get_process(pid as i32).ok_or(dmgr_err!("could not find process with pid {:?}", pid))?;
-//    info!("proc = {:?}", p);
+    let p = system
+        .get_process(pid as i32)
+        .ok_or(dmgr_err!("could not find process with pid {:?}", pid))?;
+    //    info!("proc = {:?}", p);
 
     let sig = Signal::Continue;
     let kill_result = p.kill(sig);
