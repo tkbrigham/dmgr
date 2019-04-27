@@ -10,10 +10,16 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::io::Read;
+use std::io::BufRead;
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::thread;
 use std::thread::JoinHandle;
+use std::net::TcpStream;
+use std::net::SocketAddr;
+use std::net::Shutdown;
+use std::io::BufReader;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -102,19 +108,69 @@ impl Service {
         Self::from_path(&PathBuf::from(s))
     }
 
+    pub fn row(self) -> Vec<String> {
+        vec![
+            self.name.clone(),
+            self.http_check_passing().to_string().clone(),
+            format!("{:?}", self.ports),
+        ]
+    }
+
     pub fn is_running(&self) -> bool {
         self.ports_all_open() && self.pid_is_running()
     }
 
-    pub fn row(self) -> Vec<String> {
-        vec![self.name.clone(), self.is_running().to_string().clone()]
+//    pub fn is_waiting(&self) -> bool {
+//        true
+//    }
+//
+//    pub fn is_disowned(&self) -> bool {
+//        true
+//    }
+//
+//    pub fn is_started(&self) -> bool {
+//        true
+//    }
+
+    pub fn http_check_passing(&self) -> bool {
+        let endpoint = match self.http_check {
+            Some(ref e) => e,
+            None => return true,
+        };
+
+        let addrs: Vec<SocketAddr> = self.ports
+            .clone()
+            .into_iter()
+            .map(|p| SocketAddr::from(([0, 0, 0, 0], p)))
+            .collect();
+
+        if let Ok(mut stream) = TcpStream::connect(&addrs[..]) {
+//            stream.set_nonblocking(true).expect("set_nonblocking call failed");
+
+            stream.write(format!("GET {} HTTP/1.1\r\n", endpoint).as_bytes()).unwrap();
+            stream.shutdown(Shutdown::Write).expect("shutdown call failed");
+
+            let mut buf = String::new();
+            let mut buffered = BufReader::new(stream);
+            buffered.read_line(&mut buf);
+
+            println!("response = {:?}", buf.trim());
+//            let response = String::from_utf8(buf.to_vec()).unwrap();
+//            println!("response = {:?}", response);
+
+            true
+        } else {
+            println!("ooh boy");
+            false
+        }
     }
+
 
     pub fn ports_all_open(&self) -> bool {
         let mut threads: Vec<JoinHandle<bool>> = vec![];
 
         for port in self.ports.clone() {
-            threads.push(thread::spawn(move || port_is_available(port)));
+            threads.push(thread::spawn(move || tcp_is_available("0.0.0.0", port)));
         }
 
         threads
@@ -186,8 +242,8 @@ fn repo_path_for(canonical_path: &PathBuf) -> PathBuf {
     PathBuf::from(repo.unwrap())
 }
 
-fn port_is_available(port: u16) -> bool {
-    match TcpListener::bind(("0.0.0.0", port)) {
+fn tcp_is_available(host: &str, port: u16) -> bool {
+    match TcpListener::bind((host, port)) {
         Ok(_) => true,
         Err(_) => false,
     }

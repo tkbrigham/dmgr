@@ -33,7 +33,7 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         const SVC_REG: &str = "/Users/tkbrigham/.solo/service-registry.json";
         let reg = ServiceRegistry::from(SVC_REG)?;
 
-        let header: Vec<&str> = vec!["Service", "Status"];
+        let header: Vec<&str> = vec!["Service", "Status", "Ports"];
         let rows: Vec<Vec<String>> = reg.services().into_iter().map(|s| s.row()).collect();
 
         let t = TableBuilder::new().header(header);
