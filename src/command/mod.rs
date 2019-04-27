@@ -12,6 +12,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::io;
 use std::path::StripPrefixError;
+use std::num::ParseIntError;
 
 pub mod list;
 pub mod register;
@@ -90,5 +91,11 @@ impl From<OsString> for DmgrErr {
             &err.to_str()
                 .unwrap_or(format!("failed to convert {:?} to error", &err).as_str()),
         )
+    }
+}
+
+impl From<ParseIntError> for DmgrErr {
+    fn from(err: ParseIntError) -> Self {
+        DmgrErr::new(&err.to_string())
     }
 }

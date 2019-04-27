@@ -10,8 +10,8 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::io::Read;
 use std::io::BufRead;
+use std::str::FromStr;
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::thread;
@@ -20,6 +20,7 @@ use std::net::TcpStream;
 use std::net::SocketAddr;
 use std::net::Shutdown;
 use std::io::BufReader;
+use command::DmgrErr;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -117,20 +118,20 @@ impl Service {
     }
 
     pub fn is_running(&self) -> bool {
-        self.ports_all_open() && self.pid_is_running()
+        self.pid_is_running() && !self.is_waiting()
     }
 
-//    pub fn is_waiting(&self) -> bool {
-//        true
-//    }
-//
-//    pub fn is_disowned(&self) -> bool {
-//        true
-//    }
-//
-//    pub fn is_started(&self) -> bool {
-//        true
-//    }
+    pub fn is_waiting(&self) -> bool {
+        let ports_defined_and_closed = self.ports.len() > 0 && !self.ports_all_open();
+        let http_check_defined_and_failing = self.http_check.is_some() && !self.http_check_passing();
+        self.pid_is_running() && (ports_defined_and_closed || http_check_defined_and_failing)
+    }
+
+    pub fn is_disowned(&self) -> bool {
+        let ports_defined_and_open = self.ports.len() > 0 && self.ports_all_open();
+        let http_check_defined_and_passing = self.http_check.is_some() && self.http_check_passing();
+        !self.pid_is_running() && (ports_defined_and_open || http_check_defined_and_passing)
+    }
 
     pub fn http_check_passing(&self) -> bool {
         let endpoint = match self.http_check {
@@ -144,27 +145,32 @@ impl Service {
             .map(|p| SocketAddr::from(([0, 0, 0, 0], p)))
             .collect();
 
-        if let Ok(mut stream) = TcpStream::connect(&addrs[..]) {
-//            stream.set_nonblocking(true).expect("set_nonblocking call failed");
-
-            stream.write(format!("GET {} HTTP/1.1\r\n", endpoint).as_bytes()).unwrap();
-            stream.shutdown(Shutdown::Write).expect("shutdown call failed");
-
-            let mut buf = String::new();
-            let mut buffered = BufReader::new(stream);
-            buffered.read_line(&mut buf);
-
-            println!("response = {:?}", buf.trim());
-//            let response = String::from_utf8(buf.to_vec()).unwrap();
-//            println!("response = {:?}", response);
-
-            true
-        } else {
-            println!("ooh boy");
-            false
-        }
+        get_success(addrs, endpoint).is_ok()
+//
+//
+//        if let Ok(mut stream) = TcpStream::connect(&addrs[..]) {
+//            stream.shutdown(Shutdown::Write).expect("shutdown call failed");
+//
+//            let mut buf = String::new();
+//            let mut buffered = BufReader::new(stream);
+//            match buffered.read_line(&mut buf);
+//
+//            println!("response = {:?}", buf.trim());
+//
+//            match http_status_code(buf.trim()) {
+//                Ok(c) => {
+//                    println!("da code = {:?}", c);
+//                    let success = status_code_ok(c);
+//                    println!("success = {:?}", success);
+//                    success
+//                },
+//                Err(_) => false,
+//            }
+//        } else {
+//            println!("ooh boy");
+//            false
+//        }
     }
-
 
     pub fn ports_all_open(&self) -> bool {
         let mut threads: Vec<JoinHandle<bool>> = vec![];
@@ -230,6 +236,34 @@ impl Service {
     }
 }
 
+fn http_status_code(line: &str) -> DmgrResult<u16> {
+    let mut parts = line.split_whitespace();
+    parts.next();
+    let code = parts.next()
+        .ok_or(dmgr_err!("could not determine HTTP status code"))?;
+    u16::from_str(code)
+        .map_err(|e| DmgrErr::new(&e.to_string()))
+}
+
+fn status_code_ok(code: u16) -> bool {
+    code < 400
+}
+
+fn get_success(addrs: Vec<SocketAddr>, endpoint: &String) -> DmgrResult {
+    let mut stream = TcpStream::connect(&addrs[..])?;
+    stream.write(format!("GET {} HTTP/1.1\r\n", endpoint).as_bytes())?;
+    stream.shutdown(Shutdown::Write)?;
+
+    let mut buf = String::new();
+    let mut buffered = BufReader::new(stream);
+    buffered.read_line(&mut buf)?;
+
+    let code = http_status_code(buf.trim())?;
+
+    if !status_code_ok(code) { fail!("received error code from server: {:?}", code) }
+    Ok(())
+}
+
 pub type ServiceCommand = String;
 
 // TODO: this is implemented in register.rs too
@@ -243,8 +277,5 @@ fn repo_path_for(canonical_path: &PathBuf) -> PathBuf {
 }
 
 fn tcp_is_available(host: &str, port: u16) -> bool {
-    match TcpListener::bind((host, port)) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    TcpListener::bind((host, port)).is_ok()
 }
