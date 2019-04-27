@@ -136,18 +136,17 @@ impl Service {
     }
 
     pub fn is_ready(&self) -> bool {
-       self.is_running() && !self.is_waiting()
+        self.is_running() && !self.is_waiting()
     }
 
     pub fn is_waiting(&self) -> bool {
-        self.is_running() && (
-            self.has_http_check_defined_and_failing() ||
-                self.has_ports_defined_and_all_closed()
-            )
+        self.is_running()
+            && (self.has_http_check_defined_and_failing()
+                || self.has_ports_defined_and_all_closed())
     }
 
     pub fn has_http_check_defined_and_failing(&self) -> bool {
-       self.http_check.is_some() && !self.http_check_passing()
+        self.http_check.is_some() && !self.http_check_passing()
     }
 
     pub fn has_ports_defined_and_all_closed(&self) -> bool {
@@ -159,7 +158,10 @@ impl Service {
     }
 
     pub fn open_ports(&self) -> Vec<&u16> {
-        self.ports.iter().filter(|&port| tcp_is_available("0.0.0.0", *port)).collect()
+        self.ports
+            .iter()
+            .filter(|&port| tcp_is_available("0.0.0.0", *port))
+            .collect()
     }
 
     pub fn http_check_passing(&self) -> bool {
