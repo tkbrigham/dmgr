@@ -11,11 +11,13 @@ use clap::{App, ArgMatches};
 use std::ffi::OsString;
 use std::fmt;
 use std::io;
+use std::num::ParseIntError;
 use std::path::StripPrefixError;
 
 pub mod list;
 pub mod register;
 pub mod start;
+pub mod stop;
 
 pub trait Runnable<'a> {
     fn new(args: &'a ArgMatches<'a>) -> Self;
@@ -89,5 +91,11 @@ impl From<OsString> for DmgrErr {
             &err.to_str()
                 .unwrap_or(format!("failed to convert {:?} to error", &err).as_str()),
         )
+    }
+}
+
+impl From<ParseIntError> for DmgrErr {
+    fn from(err: ParseIntError) -> Self {
+        DmgrErr::new(&err.to_string())
     }
 }

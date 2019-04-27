@@ -1,4 +1,11 @@
 ### Ordered ToDo list
+1. START
+    - add wait_for_running, or similar
+    - dev_process handling
+    - container handling
+    - group handling
+    - `all` handling
+
 1. Subcommands:
   - Register
   - Start
