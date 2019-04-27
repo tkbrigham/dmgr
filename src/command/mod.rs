@@ -11,8 +11,8 @@ use clap::{App, ArgMatches};
 use std::ffi::OsString;
 use std::fmt;
 use std::io;
-use std::path::StripPrefixError;
 use std::num::ParseIntError;
+use std::path::StripPrefixError;
 
 pub mod list;
 pub mod register;

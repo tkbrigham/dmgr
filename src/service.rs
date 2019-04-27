@@ -3,24 +3,24 @@ extern crate serde_json;
 
 use sysinfo::SystemExt;
 
+use command::DmgrErr;
 use command::DmgrResult;
 use config::Runfile;
 use config::ServiceConfigContent;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Write;
 use std::io::BufRead;
-use std::str::FromStr;
+use std::io::BufReader;
+use std::io::Write;
+use std::net::Shutdown;
+use std::net::SocketAddr;
 use std::net::TcpListener;
+use std::net::TcpStream;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::thread;
 use std::thread::JoinHandle;
-use std::net::TcpStream;
-use std::net::SocketAddr;
-use std::net::Shutdown;
-use std::io::BufReader;
-use command::DmgrErr;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -123,7 +123,8 @@ impl Service {
 
     pub fn is_waiting(&self) -> bool {
         let ports_defined_and_closed = self.ports.len() > 0 && !self.ports_all_open();
-        let http_check_defined_and_failing = self.http_check.is_some() && !self.http_check_passing();
+        let http_check_defined_and_failing =
+            self.http_check.is_some() && !self.http_check_passing();
         self.pid_is_running() && (ports_defined_and_closed || http_check_defined_and_failing)
     }
 
@@ -139,37 +140,14 @@ impl Service {
             None => return true,
         };
 
-        let addrs: Vec<SocketAddr> = self.ports
+        let addrs: Vec<SocketAddr> = self
+            .ports
             .clone()
             .into_iter()
             .map(|p| SocketAddr::from(([0, 0, 0, 0], p)))
             .collect();
 
         get_success(addrs, endpoint).is_ok()
-//
-//
-//        if let Ok(mut stream) = TcpStream::connect(&addrs[..]) {
-//            stream.shutdown(Shutdown::Write).expect("shutdown call failed");
-//
-//            let mut buf = String::new();
-//            let mut buffered = BufReader::new(stream);
-//            match buffered.read_line(&mut buf);
-//
-//            println!("response = {:?}", buf.trim());
-//
-//            match http_status_code(buf.trim()) {
-//                Ok(c) => {
-//                    println!("da code = {:?}", c);
-//                    let success = status_code_ok(c);
-//                    println!("success = {:?}", success);
-//                    success
-//                },
-//                Err(_) => false,
-//            }
-//        } else {
-//            println!("ooh boy");
-//            false
-//        }
     }
 
     pub fn ports_all_open(&self) -> bool {
@@ -239,10 +217,10 @@ impl Service {
 fn http_status_code(line: &str) -> DmgrResult<u16> {
     let mut parts = line.split_whitespace();
     parts.next();
-    let code = parts.next()
+    let code = parts
+        .next()
         .ok_or(dmgr_err!("could not determine HTTP status code"))?;
-    u16::from_str(code)
-        .map_err(|e| DmgrErr::new(&e.to_string()))
+    u16::from_str(code).map_err(|e| DmgrErr::new(&e.to_string()))
 }
 
 fn status_code_ok(code: u16) -> bool {
@@ -260,7 +238,10 @@ fn get_success(addrs: Vec<SocketAddr>, endpoint: &String) -> DmgrResult {
 
     let code = http_status_code(buf.trim())?;
 
-    if !status_code_ok(code) { fail!("received error code from server: {:?}", code) }
+    if !status_code_ok(code) {
+        fail!("received error code from server: {:?}", code)
+    }
+
     Ok(())
 }
 
