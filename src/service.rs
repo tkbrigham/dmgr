@@ -18,6 +18,9 @@ use std::net::SocketAddr;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::net::Ipv4Addr;
+use std::time::Duration;
+use std::net::SocketAddrV4;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -103,11 +106,15 @@ impl Service {
     }
 
     pub fn row(self) -> Vec<String> {
+        println!("converting {:?} to row", self.name);
         vec![
             self.name.clone(),
-            self.status(),
+            status_to_string(self.typed_status()),
             format!("{:?}", self.ports),
         ]
+//        vec![
+//            self.status(),
+//        ]
     }
 
     fn status(&self) -> String {
@@ -116,13 +123,45 @@ impl Service {
         } else if self.is_waiting() {
             "waiting"
         } else {
-            "-"
+            ""
         };
 
         if self.is_disowned() {
             format!("{}*", status)
         } else {
             format!("{}", status)
+        }
+    }
+
+    fn typed_status(&self) -> ServiceStatus {
+        let has_active_pid = self.has_active_pid();
+        if self.ports.is_empty() {
+            if has_active_pid { ServiceStatus::Running } else { ServiceStatus::Stopped }
+        } else {
+            let port_statuses: Vec<ServiceStatus> = self.ports.clone()
+                .into_iter()
+                .map(|port| self.status_for_port(port))
+                .collect();
+            println!("port statuses: {:?}", port_statuses);
+            ServiceStatus::Stopped
+        }
+    }
+
+    pub fn status_for_port(&self, port: u16) -> ServiceStatus {
+        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port));
+        let timeout = Duration::from_millis(50);
+        let mut stream = TcpStream::connect_timeout(&addr, timeout)
+            .unwrap_or(return ServiceStatus::Stopped);
+
+        match &self.http_check {
+            None => ServiceStatus::Running,
+            Some(endpoint) => {
+                if get_success(&mut stream, endpoint).is_ok() {
+                   ServiceStatus::Running
+                } else {
+                    ServiceStatus::Waiting
+                }
+            }
         }
     }
 
@@ -160,7 +199,10 @@ impl Service {
     pub fn open_ports(&self) -> Vec<&u16> {
         self.ports
             .iter()
-            .filter(|&port| tcp_is_available("0.0.0.0", *port))
+            .filter(|&&port| {
+                let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port));
+                tcp_is_available(&addr)
+            })
             .collect()
     }
 
@@ -177,7 +219,8 @@ impl Service {
             .map(|p| SocketAddr::from(([0, 0, 0, 0], p)))
             .collect();
 
-        get_success(addrs, endpoint).is_ok()
+        let mut stream = TcpStream::connect(&addrs[..]).unwrap_or(return false);
+        get_success(&mut stream, endpoint).is_ok()
     }
 
     pub fn has_active_pid(&self) -> bool {
@@ -235,8 +278,7 @@ fn status_code_ok(code: u16) -> bool {
     code < 400
 }
 
-fn get_success(addrs: Vec<SocketAddr>, endpoint: &String) -> DmgrResult {
-    let mut stream = TcpStream::connect(&addrs[..])?;
+fn get_success(stream: &mut TcpStream, endpoint: &String) -> DmgrResult {
     stream.write(format!("GET {} HTTP/1.1\r\n", endpoint).as_bytes())?;
     stream.shutdown(Shutdown::Write)?;
 
@@ -265,6 +307,28 @@ fn repo_path_for(canonical_path: &PathBuf) -> PathBuf {
     PathBuf::from(repo.unwrap())
 }
 
-fn tcp_is_available(host: &str, port: u16) -> bool {
-    TcpStream::connect((host, port)).is_ok()
+fn tcp_is_available(addr: &SocketAddr) -> bool {
+    let timeout = Duration::from_millis(50);
+    TcpStream::connect_timeout(addr, timeout).is_ok()
+}
+
+#[derive(Debug)]
+pub enum ServiceStatus {
+    Stopped,
+    Waiting,
+    Running,
+    WaitingDisowned,
+    RunningDisowned,
+}
+
+fn status_to_string(s: ServiceStatus) -> String {
+    let status = match s {
+        ServiceStatus::Stopped => "-",
+        ServiceStatus::Waiting => "waiting",
+        ServiceStatus::Running => "running",
+        ServiceStatus::WaitingDisowned => "waiting*",
+        ServiceStatus::RunningDisowned => "running*",
+    };
+
+    String::from(status)
 }

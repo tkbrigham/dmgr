@@ -30,7 +30,7 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         ListRunner { args }
     }
     fn run(&self) -> DmgrResult {
-        const SVC_REG: &str = "/Users/tkbrigham/.solo/service-registry.json";
+        const SVC_REG: &str = "/Users/thomas.brigham/.solo/service-registry.json";
         let reg = ServiceRegistry::from(SVC_REG)?;
 
         let header: Vec<&str> = vec!["Service", "Status", "Ports"];
