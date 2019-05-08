@@ -1,7 +1,8 @@
 extern crate home;
 extern crate serde_json;
+extern crate libc;
 
-use sysinfo::SystemExt;
+use libc::kill;
 
 use command::DmgrErr;
 use command::DmgrResult;
@@ -21,6 +22,7 @@ use std::str::FromStr;
 use std::net::Ipv4Addr;
 use std::time::Duration;
 use std::net::SocketAddrV4;
+use std::time;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -105,16 +107,18 @@ impl Service {
         Self::from_path(&PathBuf::from(s))
     }
 
-    pub fn row(self) -> Vec<String> {
+    pub fn row(&self) -> Vec<String> {
         println!("converting {:?} to row", self.name);
-        vec![
-            self.name.clone(),
-            status_to_string(self.typed_status()),
-            format!("{:?}", self.ports),
-        ]
-//        vec![
-//            self.status(),
-//        ]
+        let name_clone = self.name.clone();
+//        println!("[{}] finished name_clone after {:?}", name_clone, now.elapsed());
+
+        let status = status_to_string(self.typed_status());
+//        println!("[{}] finished status after {:?}", name_clone, now.elapsed());
+
+        let ports = format!("{:?}", self.ports);
+//        println!("[{}] finished ports after {:?}", name_clone, now.elapsed());
+
+        vec![name_clone, status, ports]
     }
 
     fn status(&self) -> String {
@@ -134,14 +138,19 @@ impl Service {
     }
 
     fn typed_status(&self) -> ServiceStatus {
+        let now = time::Instant::now();
+
         let has_active_pid = self.has_active_pid();
+        println!("[{}] finished has_active_pid after {:?}", self.name, now.elapsed());
+
         if self.ports.is_empty() {
-            if has_active_pid { ServiceStatus::Running } else { ServiceStatus::Stopped }
+            if false { ServiceStatus::Running } else { ServiceStatus::Stopped }
         } else {
             let port_statuses: Vec<ServiceStatus> = self.ports.clone()
                 .into_iter()
                 .map(|port| self.status_for_port(port))
                 .collect();
+            println!("[{}] finished port_statuses after {:?}", self.name, now.elapsed());
             println!("port statuses: {:?}", port_statuses);
             ServiceStatus::Stopped
         }
@@ -150,8 +159,11 @@ impl Service {
     pub fn status_for_port(&self, port: u16) -> ServiceStatus {
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port));
         let timeout = Duration::from_millis(50);
-        let mut stream = TcpStream::connect_timeout(&addr, timeout)
-            .unwrap_or(return ServiceStatus::Stopped);
+
+        let mut stream = match TcpStream::connect_timeout(&addr, timeout) {
+            Ok(s) => s,
+            Err(_) => return ServiceStatus::Stopped,
+        };
 
         match &self.http_check {
             None => ServiceStatus::Running,
@@ -219,20 +231,26 @@ impl Service {
             .map(|p| SocketAddr::from(([0, 0, 0, 0], p)))
             .collect();
 
-        let mut stream = TcpStream::connect(&addrs[..]).unwrap_or(return false);
+        let mut stream = match TcpStream::connect(&addrs[..]) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+
         get_success(&mut stream, endpoint).is_ok()
     }
 
     pub fn has_active_pid(&self) -> bool {
-        let system = sysinfo::System::new();
         let p = match self.pid() {
             Ok(pid) => pid,
             Err(_) => return false,
         };
 
-        match system.get_process(p) {
-            Some(_) => true,
-            None => false,
+        println!("service {:?} has p {:?}", self.name, &p);
+
+        unsafe {
+            let code = kill(p, 0);
+            println!("code is: {:?}", &code);
+            code == 0
         }
     }
 

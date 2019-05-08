@@ -19,6 +19,7 @@ prettytable-rs = "*"
 backtrace = "*"
 shlex = "*"
 sysinfo = "*"
+libc = "*"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"

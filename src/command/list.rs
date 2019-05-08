@@ -6,6 +6,9 @@ use prettytable::*;
 use command::DmgrResult;
 use command::{Runnable, Subcommand};
 use config::ServiceRegistry;
+use std::thread;
+use std::time;
+
 
 #[derive(Debug)]
 pub struct ListRunner<'a> {
@@ -30,15 +33,34 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         ListRunner { args }
     }
     fn run(&self) -> DmgrResult {
-        const SVC_REG: &str = "/Users/thomas.brigham/.solo/service-registry.json";
+        const SVC_REG: &str = "/Users/tkbrigham/.solo/service-registry.json";
         let reg = ServiceRegistry::from(SVC_REG)?;
 
+        let mut threads = vec![];
+        for (i, service) in reg.services().into_iter().enumerate() {
+            threads.push(thread::spawn(move || {
+                let now = time::Instant::now();
+
+                println!("thread {} is booting", service.name);
+                let row = service.row();
+
+                let now = time::Instant::now();
+                println!("thread {} took {:?}", service.name, now.elapsed());
+                row
+            }));
+        }
+
+        let mut rows = vec![];
+        for thread in threads {
+           rows.push(thread.join())
+        }
+
+        println!("results = {:?}", rows);
         let header: Vec<&str> = vec!["Service", "Status", "Ports"];
-        let rows: Vec<Vec<String>> = reg.services().into_iter().map(|s| s.row()).collect();
-
         let t = TableBuilder::new().header(header);
-
+//
         rows.into_iter()
+            .filter_map(Result::ok)
             .fold(t, |t, r| t.add_row(r))
             .build()
             .printstd();
