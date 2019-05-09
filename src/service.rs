@@ -3,6 +3,7 @@ extern crate serde_json;
 extern crate libc;
 
 use libc::kill;
+use log::debug;
 
 use command::DmgrErr;
 use command::DmgrResult;
@@ -23,6 +24,7 @@ use std::net::Ipv4Addr;
 use std::time::Duration;
 use std::net::SocketAddrV4;
 use std::time;
+use std::ops::BitAnd;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -112,7 +114,7 @@ impl Service {
         let name_clone = self.name.clone();
 //        println!("[{}] finished name_clone after {:?}", name_clone, now.elapsed());
 
-        let status = status_to_string(self.typed_status());
+        let status = self.typed_status().to_string();
 //        println!("[{}] finished status after {:?}", name_clone, now.elapsed());
 
         let ports = format!("{:?}", self.ports);
@@ -143,17 +145,19 @@ impl Service {
         let has_active_pid = self.has_active_pid();
         println!("[{}] finished has_active_pid after {:?}", self.name, now.elapsed());
 
-        if self.ports.is_empty() {
-            if false { ServiceStatus::Running } else { ServiceStatus::Stopped }
-        } else {
-            let port_statuses: Vec<ServiceStatus> = self.ports.clone()
+        if self.is_http() {
+            let ownership_status = if has_active_pid { ServiceStatus::Owned } else { ServiceStatus::Disowned };
+            let port_status: ServiceStatus = self.ports.clone()
                 .into_iter()
-                .map(|port| self.status_for_port(port))
-                .collect();
-            println!("[{}] finished port_statuses after {:?}", self.name, now.elapsed());
-            println!("port statuses: {:?}", port_statuses);
-            ServiceStatus::Stopped
+                .fold(ServiceStatus::Owned, |status, port| status & self.status_for_port(port));
+            port_status & ownership_status
+        } else {
+            if has_active_pid { ServiceStatus::Running } else { ServiceStatus::Stopped }
         }
+    }
+
+    pub fn is_http(&self) -> bool {
+        !self.ports.is_empty()
     }
 
     pub fn status_for_port(&self, port: u16) -> ServiceStatus {
@@ -335,18 +339,45 @@ pub enum ServiceStatus {
     Stopped,
     Waiting,
     Running,
+    Owned,
+    Disowned,
     WaitingDisowned,
     RunningDisowned,
 }
 
-fn status_to_string(s: ServiceStatus) -> String {
-    let status = match s {
-        ServiceStatus::Stopped => "-",
-        ServiceStatus::Waiting => "waiting",
-        ServiceStatus::Running => "running",
-        ServiceStatus::WaitingDisowned => "waiting*",
-        ServiceStatus::RunningDisowned => "running*",
-    };
+impl ToString for ServiceStatus {
+    fn to_string(&self) -> String {
+        let status = match self {
+            &ServiceStatus::Stopped => "-",
+            &ServiceStatus::Waiting => "waiting",
+            &ServiceStatus::Running => "running",
+            &ServiceStatus::WaitingDisowned => "waiting*",
+            &ServiceStatus::RunningDisowned => "running*",
+            s => {
+                debug!("unexpected status to render: {:?}", s);
+                "-"
+            },
+        };
 
-    String::from(status)
+        String::from(status)
+    }
+}
+
+impl BitAnd for ServiceStatus {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (ServiceStatus::Owned, e) | (e, ServiceStatus::Owned) => e, // owned is the identity property
+            (ServiceStatus::Stopped, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Stopped) => ServiceStatus::Waiting, // combining mixed signals means waiting
+            (ServiceStatus::Waiting, ServiceStatus::Stopped) | (ServiceStatus::Stopped, ServiceStatus::Waiting) | (ServiceStatus::Waiting, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Waiting) => ServiceStatus::Waiting,
+            (ServiceStatus::Disowned, ServiceStatus::Stopped) | (ServiceStatus::Stopped, ServiceStatus::Disowned) => ServiceStatus::Stopped,
+            (ServiceStatus::Disowned, ServiceStatus::Waiting) | (ServiceStatus::Waiting, ServiceStatus::Disowned) => ServiceStatus::WaitingDisowned,
+            (ServiceStatus::Disowned, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Disowned) => ServiceStatus::RunningDisowned,
+            (a, b) => {
+                debug!("unexpected combination of statuses: {:?}, {:?}", a, b);
+                ServiceStatus::Stopped
+            }
+        }
+    }
 }
