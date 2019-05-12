@@ -23,7 +23,6 @@ use std::str::FromStr;
 use std::net::Ipv4Addr;
 use std::time::Duration;
 use std::net::SocketAddrV4;
-use std::time;
 use std::ops::BitAnd;
 
 #[derive(Debug, Clone)]
@@ -110,7 +109,6 @@ impl Service {
     }
 
     pub fn row(&self) -> Vec<String> {
-        println!("converting {:?} to row", self.name);
         let name_clone = self.name.clone();
 //        println!("[{}] finished name_clone after {:?}", name_clone, now.elapsed());
 
@@ -123,34 +121,14 @@ impl Service {
         vec![name_clone, status, ports]
     }
 
-    fn status(&self) -> String {
-        let status = if self.is_ready() {
-            "running"
-        } else if self.is_waiting() {
-            "waiting"
-        } else {
-            ""
-        };
-
-        if self.is_disowned() {
-            format!("{}*", status)
-        } else {
-            format!("{}", status)
-        }
-    }
-
     fn typed_status(&self) -> ServiceStatus {
-        let now = time::Instant::now();
-
         let has_active_pid = self.has_active_pid();
-        println!("[{}] finished has_active_pid after {:?}", self.name, now.elapsed());
 
         if self.is_http() {
             let ownership_status = if has_active_pid { ServiceStatus::Owned } else { ServiceStatus::Disowned };
-            let port_status: ServiceStatus = self.ports.clone()
+            self.ports.clone()
                 .into_iter()
-                .fold(ServiceStatus::Owned, |status, port| status & self.status_for_port(port));
-            port_status & ownership_status
+                .fold(ownership_status, |status, port| status & self.status_for_port(port))
         } else {
             if has_active_pid { ServiceStatus::Running } else { ServiceStatus::Stopped }
         }
@@ -161,22 +139,19 @@ impl Service {
     }
 
     pub fn status_for_port(&self, port: u16) -> ServiceStatus {
-        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port));
-        let timeout = Duration::from_millis(50);
-
-        let mut stream = match TcpStream::connect_timeout(&addr, timeout) {
+        let addr = format!("0.0.0.0:{}", port);
+        let mut stream = match TcpStream::connect(&addr) {
             Ok(s) => s,
             Err(_) => return ServiceStatus::Stopped,
         };
 
+        stream.set_nodelay(true).expect("could not configure TCP stream");
+
         match &self.http_check {
             None => ServiceStatus::Running,
             Some(endpoint) => {
-                if get_success(&mut stream, endpoint).is_ok() {
-                   ServiceStatus::Running
-                } else {
-                    ServiceStatus::Waiting
-                }
+                let succ = get_success(&mut stream, endpoint);
+                if succ.is_ok() { ServiceStatus::Running } else { ServiceStatus::Waiting }
             }
         }
     }
@@ -301,17 +276,24 @@ fn status_code_ok(code: u16) -> bool {
 }
 
 fn get_success(stream: &mut TcpStream, endpoint: &String) -> DmgrResult {
-    stream.write(format!("GET {} HTTP/1.1\r\n", endpoint).as_bytes())?;
+    let req = format!("GET {} HTTP/1.1\r\n", endpoint);
+    stream.write(req.as_bytes())?;
+
+    let host_header  = "Host: *\r\n";
+    stream.write(host_header.as_bytes())?;
+
+    stream.write("\r\n".as_bytes())?;
     stream.shutdown(Shutdown::Write)?;
 
     let mut buf = String::new();
     let mut buffered = BufReader::new(stream);
-    buffered.read_line(&mut buf)?;
 
-    let code = http_status_code(buf.trim())?;
+    buffered.read_line(&mut buf)?;
+    let resp = &buf.trim();
+    let code = http_status_code(resp)?;
 
     if !status_code_ok(code) {
-        fail!("received error code from server: {:?}", code)
+        fail!("received error code from server: {:?}", code);
     }
 
     Ok(())
@@ -334,7 +316,7 @@ fn tcp_is_available(addr: &SocketAddr) -> bool {
     TcpStream::connect_timeout(addr, timeout).is_ok()
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ServiceStatus {
     Stopped,
     Waiting,
@@ -367,6 +349,10 @@ impl BitAnd for ServiceStatus {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self {
+        if self == rhs {
+            return self
+        }
+
         match (self, rhs) {
             (ServiceStatus::Owned, e) | (e, ServiceStatus::Owned) => e, // owned is the identity property
             (ServiceStatus::Stopped, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Stopped) => ServiceStatus::Waiting, // combining mixed signals means waiting
