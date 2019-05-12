@@ -8,7 +8,6 @@ use command::{Runnable, Subcommand};
 use config::ServiceRegistry;
 use std::thread;
 
-
 #[derive(Debug)]
 pub struct ListRunner<'a> {
     pub args: &'a ArgMatches<'a>,
@@ -36,14 +35,12 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         let mut threads = vec![];
 
         for service in reg.services().into_iter() {
-            threads.push(thread::spawn(move || {
-                service.row()
-            }));
+            threads.push(thread::spawn(move || service.row()));
         }
 
         let mut rows = vec![];
         for thread in threads {
-           rows.push(thread.join())
+            rows.push(thread.join())
         }
 
         let header: Vec<&str> = vec!["Service", "Status", "Ports"];

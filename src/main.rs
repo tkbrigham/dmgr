@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
 extern crate clap;
+extern crate libc;
 extern crate log;
 extern crate log4rs;
 extern crate prettytable;
 extern crate sysinfo;
-extern crate libc;
 
 #[macro_use]
 mod macros;

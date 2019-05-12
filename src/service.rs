@@ -1,6 +1,6 @@
 extern crate home;
-extern crate serde_json;
 extern crate libc;
+extern crate serde_json;
 
 use libc::kill;
 use log::debug;
@@ -15,15 +15,15 @@ use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::net::Ipv4Addr;
 use std::net::Shutdown;
 use std::net::SocketAddr;
+use std::net::SocketAddrV4;
 use std::net::TcpStream;
+use std::ops::BitAnd;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::net::Ipv4Addr;
 use std::time::Duration;
-use std::net::SocketAddrV4;
-use std::ops::BitAnd;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -110,13 +110,13 @@ impl Service {
 
     pub fn row(&self) -> Vec<String> {
         let name_clone = self.name.clone();
-//        println!("[{}] finished name_clone after {:?}", name_clone, now.elapsed());
+        //        println!("[{}] finished name_clone after {:?}", name_clone, now.elapsed());
 
         let status = self.typed_status().to_string();
-//        println!("[{}] finished status after {:?}", name_clone, now.elapsed());
+        //        println!("[{}] finished status after {:?}", name_clone, now.elapsed());
 
         let ports = format!("{:?}", self.ports);
-//        println!("[{}] finished ports after {:?}", name_clone, now.elapsed());
+        //        println!("[{}] finished ports after {:?}", name_clone, now.elapsed());
 
         vec![name_clone, status, ports]
     }
@@ -125,12 +125,23 @@ impl Service {
         let has_active_pid = self.has_active_pid();
 
         if self.is_http() {
-            let ownership_status = if has_active_pid { ServiceStatus::Owned } else { ServiceStatus::Disowned };
-            self.ports.clone()
+            let ownership_status = if has_active_pid {
+                ServiceStatus::Owned
+            } else {
+                ServiceStatus::Disowned
+            };
+            self.ports
+                .clone()
                 .into_iter()
-                .fold(ownership_status, |status, port| status & self.status_for_port(port))
+                .fold(ownership_status, |status, port| {
+                    status & self.status_for_port(port)
+                })
         } else {
-            if has_active_pid { ServiceStatus::Running } else { ServiceStatus::Stopped }
+            if has_active_pid {
+                ServiceStatus::Running
+            } else {
+                ServiceStatus::Stopped
+            }
         }
     }
 
@@ -145,13 +156,19 @@ impl Service {
             Err(_) => return ServiceStatus::Stopped,
         };
 
-        stream.set_nodelay(true).expect("could not configure TCP stream");
+        stream
+            .set_nodelay(true)
+            .expect("could not configure TCP stream");
 
         match &self.http_check {
             None => ServiceStatus::Running,
             Some(endpoint) => {
                 let succ = get_success(&mut stream, endpoint);
-                if succ.is_ok() { ServiceStatus::Running } else { ServiceStatus::Waiting }
+                if succ.is_ok() {
+                    ServiceStatus::Running
+                } else {
+                    ServiceStatus::Waiting
+                }
             }
         }
     }
@@ -279,7 +296,7 @@ fn get_success(stream: &mut TcpStream, endpoint: &String) -> DmgrResult {
     let req = format!("GET {} HTTP/1.1\r\n", endpoint);
     stream.write(req.as_bytes())?;
 
-    let host_header  = "Host: *\r\n";
+    let host_header = "Host: *\r\n";
     stream.write(host_header.as_bytes())?;
 
     stream.write("\r\n".as_bytes())?;
@@ -338,7 +355,7 @@ impl ToString for ServiceStatus {
             s => {
                 debug!("unexpected status to render: {:?}", s);
                 "-"
-            },
+            }
         };
 
         String::from(status)
@@ -350,16 +367,23 @@ impl BitAnd for ServiceStatus {
 
     fn bitand(self, rhs: Self) -> Self {
         if self == rhs {
-            return self
+            return self;
         }
 
         match (self, rhs) {
             (ServiceStatus::Owned, e) | (e, ServiceStatus::Owned) => e, // owned is the identity property
-            (ServiceStatus::Stopped, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Stopped) => ServiceStatus::Waiting, // combining mixed signals means waiting
-            (ServiceStatus::Waiting, ServiceStatus::Stopped) | (ServiceStatus::Stopped, ServiceStatus::Waiting) | (ServiceStatus::Waiting, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Waiting) => ServiceStatus::Waiting,
-            (ServiceStatus::Disowned, ServiceStatus::Stopped) | (ServiceStatus::Stopped, ServiceStatus::Disowned) => ServiceStatus::Stopped,
-            (ServiceStatus::Disowned, ServiceStatus::Waiting) | (ServiceStatus::Waiting, ServiceStatus::Disowned) => ServiceStatus::WaitingDisowned,
-            (ServiceStatus::Disowned, ServiceStatus::Running) | (ServiceStatus::Running, ServiceStatus::Disowned) => ServiceStatus::RunningDisowned,
+            (ServiceStatus::Stopped, ServiceStatus::Running)
+            | (ServiceStatus::Running, ServiceStatus::Stopped) => ServiceStatus::Waiting, // combining mixed signals means waiting
+            (ServiceStatus::Waiting, ServiceStatus::Stopped)
+            | (ServiceStatus::Stopped, ServiceStatus::Waiting)
+            | (ServiceStatus::Waiting, ServiceStatus::Running)
+            | (ServiceStatus::Running, ServiceStatus::Waiting) => ServiceStatus::Waiting,
+            (ServiceStatus::Disowned, ServiceStatus::Stopped)
+            | (ServiceStatus::Stopped, ServiceStatus::Disowned) => ServiceStatus::Stopped,
+            (ServiceStatus::Disowned, ServiceStatus::Waiting)
+            | (ServiceStatus::Waiting, ServiceStatus::Disowned) => ServiceStatus::WaitingDisowned,
+            (ServiceStatus::Disowned, ServiceStatus::Running)
+            | (ServiceStatus::Running, ServiceStatus::Disowned) => ServiceStatus::RunningDisowned,
             (a, b) => {
                 debug!("unexpected combination of statuses: {:?}, {:?}", a, b);
                 ServiceStatus::Stopped
