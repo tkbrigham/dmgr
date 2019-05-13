@@ -110,13 +110,10 @@ impl Service {
 
     pub fn row(&self) -> Vec<String> {
         let name_clone = self.name.clone();
-        //        println!("[{}] finished name_clone after {:?}", name_clone, now.elapsed());
 
         let status = self.typed_status().to_string();
-        //        println!("[{}] finished status after {:?}", name_clone, now.elapsed());
 
         let ports = format!("{:?}", self.ports);
-        //        println!("[{}] finished ports after {:?}", name_clone, now.elapsed());
 
         vec![name_clone, status, ports]
     }
@@ -241,11 +238,8 @@ impl Service {
             Err(_) => return false,
         };
 
-        println!("service {:?} has p {:?}", self.name, &p);
-
         unsafe {
             let code = kill(p, 0);
-            println!("code is: {:?}", &code);
             code == 0
         }
     }
