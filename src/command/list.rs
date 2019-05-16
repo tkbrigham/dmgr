@@ -7,6 +7,7 @@ use command::DmgrResult;
 use command::{Runnable, Subcommand};
 use config::ServiceRegistry;
 use std::thread;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct ListRunner<'a> {
@@ -31,26 +32,36 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         ListRunner { args }
     }
     fn run(&self) -> DmgrResult {
+        let start = Instant::now();
+        println!("start: {:?}", start.elapsed());
         let reg = ServiceRegistry::get()?;
+        println!("after reg: {:?}", start.elapsed());
         let mut threads = vec![];
+        let services = reg.services();
+        println!("after services: {:?}", start.elapsed());
 
-        for service in reg.services().into_iter() {
+        for service in services {
+            println!("starting thread for {:?}: {:?}", &service.name, start.elapsed());
             threads.push(thread::spawn(move || service.row()));
         }
 
         let mut rows = vec![];
         for thread in threads {
-            rows.push(thread.join())
+            println!("joining thread: {:?}", start.elapsed());
+            rows.push(thread.join());
         }
 
         let header: Vec<&str> = vec!["Service", "Status", "Ports"];
         let t = TableBuilder::new().header(header);
+        println!("after table builder: {:?}", start.elapsed());
 
         rows.into_iter()
             .filter_map(Result::ok)
             .fold(t, |t, r| t.add_row(r))
             .build()
             .printstd();
+
+        println!("after rows.into_iter(): {:?}", start.elapsed());
 
         Ok(())
     }

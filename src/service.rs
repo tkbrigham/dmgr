@@ -15,15 +15,11 @@ use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
-use std::net::Ipv4Addr;
 use std::net::Shutdown;
-use std::net::SocketAddr;
-use std::net::SocketAddrV4;
 use std::net::TcpStream;
 use std::ops::BitAnd;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct Service {
@@ -170,68 +166,6 @@ impl Service {
         }
     }
 
-    // Could be disowned, could be owned by dmgr
-    pub fn is_running(&self) -> bool {
-        self.has_active_pid() || self.has_ports_defined_and_open()
-    }
-
-    pub fn is_disowned(&self) -> bool {
-        !self.has_active_pid() && self.has_ports_defined_and_open()
-    }
-
-    pub fn is_ready(&self) -> bool {
-        self.is_running() && !self.is_waiting()
-    }
-
-    pub fn is_waiting(&self) -> bool {
-        self.is_running()
-            && (self.has_http_check_defined_and_failing()
-                || self.has_ports_defined_and_all_closed())
-    }
-
-    pub fn has_http_check_defined_and_failing(&self) -> bool {
-        self.http_check.is_some() && !self.http_check_passing()
-    }
-
-    pub fn has_ports_defined_and_all_closed(&self) -> bool {
-        self.ports.len() > 0 && self.open_ports().len() == 0
-    }
-
-    pub fn has_ports_defined_and_open(&self) -> bool {
-        self.ports.len() > 0 && self.open_ports().len() > 0
-    }
-
-    pub fn open_ports(&self) -> Vec<&u16> {
-        self.ports
-            .iter()
-            .filter(|&&port| {
-                let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port));
-                tcp_is_available(&addr)
-            })
-            .collect()
-    }
-
-    pub fn http_check_passing(&self) -> bool {
-        let endpoint = match self.http_check {
-            Some(ref e) => e,
-            None => return true,
-        };
-
-        let addrs: Vec<SocketAddr> = self
-            .ports
-            .clone()
-            .into_iter()
-            .map(|p| SocketAddr::from(([0, 0, 0, 0], p)))
-            .collect();
-
-        let mut stream = match TcpStream::connect(&addrs[..]) {
-            Ok(s) => s,
-            Err(_) => return false,
-        };
-
-        get_success(&mut stream, endpoint).is_ok()
-    }
-
     pub fn has_active_pid(&self) -> bool {
         let p = match self.pid() {
             Ok(pid) => pid,
@@ -322,11 +256,6 @@ fn repo_path_for(canonical_path: &PathBuf) -> PathBuf {
     PathBuf::from(repo.unwrap())
 }
 
-fn tcp_is_available(addr: &SocketAddr) -> bool {
-    let timeout = Duration::from_millis(50);
-    TcpStream::connect_timeout(addr, timeout).is_ok()
-}
-
 #[derive(Debug, PartialEq)]
 pub enum ServiceStatus {
     Stopped,
@@ -366,9 +295,9 @@ impl BitAnd for ServiceStatus {
 
         match (self, rhs) {
             (ServiceStatus::Owned, e) | (e, ServiceStatus::Owned) => e, // owned is the identity property
-            (ServiceStatus::Stopped, ServiceStatus::Running)
-            | (ServiceStatus::Running, ServiceStatus::Stopped) => ServiceStatus::Waiting, // combining mixed signals means waiting
-            (ServiceStatus::Waiting, ServiceStatus::Stopped)
+            (ServiceStatus::Stopped, ServiceStatus::Running) // combining mixed signals means waiting
+            | (ServiceStatus::Running, ServiceStatus::Stopped)
+            | (ServiceStatus::Waiting, ServiceStatus::Stopped)
             | (ServiceStatus::Stopped, ServiceStatus::Waiting)
             | (ServiceStatus::Waiting, ServiceStatus::Running)
             | (ServiceStatus::Running, ServiceStatus::Waiting) => ServiceStatus::Waiting,

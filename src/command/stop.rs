@@ -2,9 +2,7 @@ extern crate shlex;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use log::{info, warn};
-use sysinfo::ProcessExt;
-use sysinfo::Signal;
-use sysinfo::SystemExt;
+use libc::kill;
 
 use command::DmgrResult;
 use command::{Runnable, Subcommand};
@@ -62,18 +60,15 @@ fn stop<'a>(args: &'a ArgMatches) -> DmgrResult {
     let pid = svc.pid()?;
     warn!("pid is {:?}", &pid);
 
-    let system = sysinfo::System::new();
-    let p = system
-        .get_process(pid as i32)
-        .ok_or(dmgr_err!("could not find process with pid {:?}", pid))?;
-    //    info!("proc = {:?}", p);
-
-    let sig = Signal::Continue;
-    let kill_result = p.kill(sig);
-
-    info!("kill result = {:?}", kill_result);
-
-    Ok(())
+    unsafe {
+        let code = kill(pid, 15);
+        if code != 0 {
+            fail!("unable to stop {:?}", svc_name)
+        } else {
+            info!("successfully stopped {:?}", svc_name);
+            Ok(())
+        }
+    }
 }
 
 //fn stop_all<'a>(args: &'a ArgMatches) -> DmgrResult {
