@@ -60,6 +60,7 @@ fn stop<'a>(args: &'a ArgMatches) -> DmgrResult {
     let pid = svc.pid()?;
     warn!("pid is {:?}", &pid);
 
+<<<<<<< Updated upstream
     unsafe {
         let code = kill(pid, 15);
         if code != 0 {
@@ -69,6 +70,20 @@ fn stop<'a>(args: &'a ArgMatches) -> DmgrResult {
             Ok(())
         }
     }
+=======
+    let system = sysinfo::System::new();
+    let p = system
+        .get_process(pid as i32)
+        .ok_or(dmgr_err!("could not find process with pid {:?}", pid))?;
+    //    info!("proc = {:?}", p);
+
+    let sig = Signal::Kill;
+    let kill_result = p.kill(sig);
+
+    info!("kill result = {:?}", kill_result);
+
+    Ok(())
+>>>>>>> Stashed changes
 }
 
 //fn stop_all<'a>(args: &'a ArgMatches) -> DmgrResult {

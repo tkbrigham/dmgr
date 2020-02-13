@@ -37,8 +37,17 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
         let reg = ServiceRegistry::get()?;
         println!("after reg: {:?}", start.elapsed());
         let mut threads = vec![];
+<<<<<<< Updated upstream
         let services = reg.services();
         println!("after services: {:?}", start.elapsed());
+=======
+        for (mut i, service) in reg.services().into_iter().enumerate() {
+            threads.push(thread::spawn(move || {
+                let now = time::Instant::now();
+
+                println!("thread {} is booting", service.name);
+                let row = service.row();
+>>>>>>> Stashed changes
 
         for service in services {
             println!("starting thread for {:?}: {:?}", &service.name, start.elapsed());
@@ -53,7 +62,10 @@ impl<'a> Runnable<'a> for ListRunner<'a> {
 
         let header: Vec<&str> = vec!["Service", "Status", "Ports"];
         let t = TableBuilder::new().header(header);
+<<<<<<< Updated upstream
         println!("after table builder: {:?}", start.elapsed());
+=======
+>>>>>>> Stashed changes
 
         rows.into_iter()
             .filter_map(Result::ok)

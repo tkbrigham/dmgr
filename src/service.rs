@@ -118,6 +118,7 @@ impl Service {
         let has_active_pid = self.has_active_pid();
 
         if self.is_http() {
+<<<<<<< Updated upstream
             let ownership_status = if has_active_pid {
                 ServiceStatus::Owned
             } else {
@@ -129,6 +130,13 @@ impl Service {
                 .fold(ownership_status, |status, port| {
                     status & self.status_for_port(port)
                 })
+=======
+            let ownership_status = if has_active_pid { ServiceStatus::Owned } else { ServiceStatus::Disowned };
+            println!("HAS ACTIVE PID: {:?}", has_active_pid);
+            self.ports.clone()
+                .into_iter()
+                .fold(ownership_status, |status, port| status & self.status_for_port(port))
+>>>>>>> Stashed changes
         } else {
             if has_active_pid {
                 ServiceStatus::Running
